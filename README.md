@@ -2,8 +2,8 @@
 
 ### Summary
 
-The jsmapper is a script that's intended to run on Linux (including
-the Raspberry Pi) that analyzes the log files produced by JS8Call, and
+jsmapper is a script that's intended to run on Linux (including the
+Raspberry Pi) that analyzes the log files produced by JS8Call, and
 produces two CSV files suitable for importing into Google Maps to
 visualize the distribution of exercise participants, along with their
 most recently reported INFO and STATUS messages.
@@ -115,12 +115,9 @@ have a non-standard installation, or if you want to process a
 DIRECTED.TXT file sent to you by another user, you can specify the
 location of this file using the --in-file flag.
 
-The output from this script is sent to two files suitable for
-importing into Google maps. The file with_calls.csv includes call
-signs in the data, and the file without_calls.csv does not. Either can
-be uploaded and mapped successfully, depending on your desired level
-of privacy. Note that old files with the same name will be
-overwritten.
+The output from this script is sent to a file suitable for importing
+into Google maps called log.csv. Note that old log.csv files will be
+overwritten when the script is re-run.
 
 ### Mapping the Results
 
@@ -137,8 +134,7 @@ https://www.google.com/mymaps
 
 3. Click "Select a file from your device"
 
-4. Navigate to the with_calls.csv or without_calls.csv file, and click
-   "Open"
+4. Navigate to the log.csv file, and click "Open"
 
 5. The dialog that pops up should have "Lat" and "Lon" clicked. If
    not, click them, then click "Continue"

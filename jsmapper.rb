@@ -295,20 +295,16 @@ puts("The following stations never reported a grid:")
 puts(heard.sort_by{|call,time| time}.reverse.map{|n| n[0]}.select{|n| n[0]!="@"}.join(", "))
 
 index=0
-File.open("with_calls.csv", 'w') do |with|
-  File.open("without_calls.csv", 'w') do |without|
-    with.puts("Call,Grid,Lat,Lon,Info,Status")
-    without.puts("Call,Grid,Lat,Lon,Info,Status")
-    heard.sort_by{|call,time| time}.reverse.each do |n|
-      if((n[0][0]!="@")&&(grids[n[0]]))
-        begin
-          loc=Maidenhead.to_latlon(grids[n[0]])
-        rescue ArgumentError
-          puts("Invalid grid square: #{n[0]}: #{grids[n[0]]}") if(verbose)
-        else
-          with.puts("#{n[0]},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
-          without.puts("#{"Loc-"+(index+=1).to_s},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
-        end
+File.open("log.csv", 'w') do |log|
+  log.puts("Call,Grid,Lat,Lon,Info,Status")
+  heard.sort_by{|call,time| time}.reverse.each do |n|
+    if((n[0][0]!="@")&&(grids[n[0]]))
+      begin
+        loc=Maidenhead.to_latlon(grids[n[0]])
+      rescue ArgumentError
+        puts("Invalid grid square: #{n[0]}: #{grids[n[0]]}") if(verbose)
+      else
+        log.puts("#{"Loc-"+(index+=1).to_s},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
       end
     end
   end
