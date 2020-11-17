@@ -18,6 +18,7 @@ bandwidth=999999999
 start_time=Time.parse("1970/01/01 00:00:00").to_i
 end_time=Time.now.to_i
 in_file="/home/pi/.local/share/JS8Call/DIRECTED.TXT"
+in_file="/home/jfrancis/.local/share/JS8Call/DIRECTED.TXT" # xxx
 
 # These are the command line options.
 opts=Optimist::options do
@@ -26,7 +27,7 @@ opts=Optimist::options do
   opt :bandwidth, "Bandwidth (in khz, defaults to 3khz)", :type => :string
   opt :start_time, "Start time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
   opt :end_time, "End time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
-  opt :in_file, "JS8Call log file (defaults to ~/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
+  opt :in_file, "JS8Call log file (defaults to /home/pi/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
   opt :verbose, "Spew verbose logging data"
 end
 
@@ -295,17 +296,56 @@ puts("The following stations never reported a grid:")
 puts(heard.sort_by{|call,time| time}.reverse.map{|n| n[0]}.select{|n| n[0]!="@"}.join(", "))
 
 index=0
-File.open("log.csv", 'w') do |log|
-  log.puts("Call,Grid,Lat,Lon,Info,Status")
-  heard.sort_by{|call,time| time}.reverse.each do |n|
-    if((n[0][0]!="@")&&(grids[n[0]]))
-      begin
-        loc=Maidenhead.to_latlon(grids[n[0]])
-      rescue ArgumentError
-        puts("Invalid grid square: #{n[0]}: #{grids[n[0]]}") if(verbose)
-      else
-        log.puts("#{"Loc-"+(index+=1).to_s},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
+File.open("amrron.csv", 'w') do |yacc|
+  File.open("with_calls.csv", 'w') do |with|
+    File.open("without_calls.csv", 'w') do |without|
+      with.puts("Call,Grid,Lat,Lon,Info,Status")
+      without.puts("Call,Grid,Lat,Lon,Info,Status")
+      heard.sort_by{|call,time| time}.reverse.each do |n|
+        if((n[0][0]!="@")&&(grids[n[0]]))
+          begin
+            loc=Maidenhead.to_latlon(grids[n[0]])
+          rescue ArgumentError
+            puts("Invalid grid square: #{n[0]}: #{grids[n[0]]}") if(verbose)
+          else
+            with.puts("#{n[0]},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
+            without.puts("#{"Loc-"+(index+=1).to_s},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
+
+            lat_d=loc[0].to_i
+            if(lat_d<0); lat_d*=-1; ns="S"; else; ns="N"; end
+            lat_d_s=lat_d.to_s
+            if(lat_d_s.length<2); lat_d_s="0"+lat_d_s; end
+            lat_m=(loc[0].abs-lat_d.abs)*60.0
+            lat_m_s=lat_m.to_s
+            if(lat_m<10); lat_m_s="0"+lat_m_s; end
+            tmp=lat_m_s.split('.')
+            if(tmp[1].length<2); lat_m_s=lat_m_s+"0"; end
+            lat_m_s=lat_m_s[0..4]
+
+            lon_d=loc[1].to_i
+            if(lon_d<0); lon_d*=-1; ew="W"; else; ew="E"; end
+            lon_d_s=lon_d.to_s
+            if(lon_d_s.length<3); lon_d_s="0"+lon_d_s; end
+            if(lon_d_s.length<3); lon_d_s="0"+lon_d_s; end
+            lon_m=((loc[1].abs-lon_d.abs).abs)*60.0
+            lon_m_s=lon_m.to_s
+            if(lon_m<10); lon_m_s="0"+lon_m_s; end
+            tmp=lon_m_s.split('.')
+            if(tmp[1].length<2); lon_m_s=lon_m_s+"0"; end
+            lon_m_s=lon_m_s[0..4]
+
+            sym_table="/"
+            sym_code="i"
+
+            now=Time.now.to_s.split
+            date=now[0].split('-')
+            timestamp=[date[2],['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date[1].to_i],date[0]].join('/')+" "+now[1]
+
+            yacc.puts("#{timestamp},#{n[0]}>NULL:=#{lat_d_s}#{lat_m_s}#{ns}#{sym_table}#{lon_d_s}#{lon_m_s}#{ew}#{sym_code} #{grids[n[0]]} #{info[n[0]].to_s}")
+          end
+        end
       end
     end
   end
 end
+
