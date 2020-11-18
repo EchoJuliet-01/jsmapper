@@ -310,7 +310,8 @@ File.open("amrron.csv", 'w') do |yacc|
           else
             with.puts("#{n[0]},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
             without.puts("#{"Loc-"+(index+=1).to_s},#{grids[n[0]]},#{loc[0]},#{loc[1]},#{info[n[0]]},#{status[n[0]]}")
-
+            # Manipulate the latitude data until it meets the
+            # requirements for an APRS packet.
             lat_d=loc[0].to_i
             if(lat_d<0); lat_d*=-1; ns="S"; else; ns="N"; end
             lat_d_s=lat_d.to_s
@@ -321,7 +322,8 @@ File.open("amrron.csv", 'w') do |yacc|
             tmp=lat_m_s.split('.')
             if(tmp[1].length<2); lat_m_s=lat_m_s+"0"; end
             lat_m_s=lat_m_s[0..4]
-
+            # Manipulate the longtude data until it meets the
+            # requirements for an APRS packet.
             lon_d=loc[1].to_i
             if(lon_d<0); lon_d*=-1; ew="W"; else; ew="E"; end
             lon_d_s=lon_d.to_s
@@ -333,14 +335,15 @@ File.open("amrron.csv", 'w') do |yacc|
             tmp=lon_m_s.split('.')
             if(tmp[1].length<2); lon_m_s=lon_m_s+"0"; end
             lon_m_s=lon_m_s[0..4]
-
+            # For now, the symbol displayed is hard-coded (a palm tree
+            # on a little desert island).
             sym_table="/"
             sym_code="i"
-
+            # Clean up the data info.
             now=Time.now.to_s.split
             date=now[0].split('-')
             timestamp=[date[2],['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date[1].to_i],date[0]].join('/')+" "+now[1]
-
+            # Write it all to the csv file.
             yacc.puts("#{timestamp},#{n[0]}>NULL:=#{lat_d_s}#{lat_m_s}#{ns}#{sym_table}#{lon_d_s}#{lon_m_s}#{ew}#{sym_code} #{grids[n[0]]} #{info[n[0]].to_s}")
           end
         end
