@@ -18,7 +18,6 @@ bandwidth=999999999
 start_time=Time.parse("1970/01/01 00:00:00").to_i
 end_time=Time.now.to_i
 in_file="/home/pi/.local/share/JS8Call/DIRECTED.TXT"
-in_file="/home/jfrancis/.local/share/JS8Call/DIRECTED.TXT" # xxx
 
 # These are the command line options.
 opts=Optimist::options do
