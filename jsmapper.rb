@@ -6,7 +6,6 @@
 
 require 'time'
 require 'json'
-require 'csv'
 require 'optimist'
 require 'maidenhead'
 
