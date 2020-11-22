@@ -56,7 +56,7 @@ Options:
   -b, --bandwidth=<s>     Bandwidth (in khz, defaults to 3khz)
   -s, --start-time=<s>    Start time/date (YYYY/MM/DD HH:MM:SS, system time zone)
   -e, --end-time=<s>      End time/date (YYYY/MM/DD HH:MM:SS, system time zone)
-  -i, --in-file=<s>       JS8Call log file (defaults to /home/pi/.local/share/JS8Call/DIRECTED.TXT)
+  -i, --in-file=<s>       JS8Call log file (defaults to ~/.local/share/JS8Call/DIRECTED.TXT)
   -v, --verbose           Spew verbose logging data
   -h, --help              Show this message
 amrron@amrron:~/jsmapper$
@@ -75,15 +75,13 @@ it's important to use the proper flags to get only the specific data
 you want.
 
 It's important to call out the --in-file parameter specifically. The
-software assumes a default installation of JS8Call on a Raspberry Pi,
-with the default user of "pi". If you meet this criteria, it is not
-necessary to use the --in-file parameter. If you are running on a Pi
-with a user other than "pi", running on x86 Linux, or OSX, you'll need
-to specify the path to the DIRECTED.TXT manually with the --in-file
-parameter. It is entirely possible that jsmapper will work on Windows,
-though this is untested and unsupported. The install and update
-scripts will not work on Windows, and updates and gem downloads will
-have to be done manually by the user.
+software is designed to work on Linux (including both x86 and Pi), as
+well as a Mac running OSX. It is entirely possible that jsmapper will
+work on Windows, though this is untested and unsupported. The install
+and update scripts will not work on Windows, and updates and gem
+downloads will have to be done manually by the user. Likewise, the
+--in-file parameter will likely have to be used to point the script to
+the DIRECTED.TXT file in the Windows filesystem.
 
 There are two categories of flags for jsmapper: frequency-related, and
 time-related. Frequency-related flags allow you to specify the dial
