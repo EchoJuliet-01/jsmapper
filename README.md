@@ -144,25 +144,4 @@ stations.
 Clicking on individual markers will display any information that was
 gathered regarding that specific station.
 
-### Future Features
-
-Future versions of this code will likely use a mapping solution other
-than Google Maps. While Google Maps are clearly the leader in this
-technology, there are privacy implications of pushing this data to the
-web in general, and to Google, specifically. Self-contained (ie,
-non-web) solutions are being investigated. While they will almost
-certainly produce inferior results visually, they should be
-considerably more secure.
-
-Future versions will also make better use of the available log data
-that is currently discarded. For example, very detailed data is
-available regarding signal strength between arbitrary received
-stations (with specifics regarding band, time of day, and solar
-conditions, allowing for predictive use for future communications), as
-well as connectivity and path information. It should also be trivial
-to group stations into "social groups" based on observed
-communications patterns. Some simple traffic analysis should also be
-able to show patterns of communications and/or "traffic hubs" within
-the groups of users based on usage data.
-
 EJ-01
