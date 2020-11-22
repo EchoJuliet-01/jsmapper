@@ -25,7 +25,7 @@ opts=Optimist::options do
   opt :bandwidth, "Bandwidth (in khz, defaults to 3khz)", :type => :string
   opt :start_time, "Start time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
   opt :end_time, "End time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
-  opt :in_file, "JS8Call log file (defaults to /home/pi/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
+  opt :in_file, "JS8Call log file (defaults to ~/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
   opt :verbose, "Spew verbose logging data"
 end
 
@@ -332,11 +332,11 @@ File.open("amrron.csv", 'w') do |yacc|
         sym_table="/"
         sym_code="i"
         # Clean up the data info.
-        now=Time.now.to_s.split
-        date=now[0].split('-')
-        timestamp=[date[2],['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date[1].to_i],date[0]].join('/')+" "+now[1]
+        heard_time=Time.at(heard[n[0]]).to_s.split
+        date=heard_time[0].split('-')
+        timestamp=[date[2],['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date[1].to_i-1],date[0]].join('/')+" "+heard_time[1]
         # Write it all to the csv file.
-        yacc.puts("#{timestamp},#{"Loc-"+(index+=1).to_s}>NULL:=#{lat_d_s}#{lat_m_s}#{ns}#{sym_table}#{lon_d_s}#{lon_m_s}#{ew}#{sym_code} #{grids[n[0]]} #{info[n[0]].to_s}")
+        yacc.puts("#{timestamp},#{"Loc"+(index+=1).to_s}>NULL:=#{lat_d_s}#{lat_m_s}#{ns}#{sym_table}#{lon_d_s}#{lon_m_s}#{ew}#{sym_code} #{grids[n[0]]} #{info[n[0]].to_s}")
       end
     end
   end
