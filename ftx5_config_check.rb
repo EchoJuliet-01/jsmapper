@@ -8,7 +8,7 @@ require 'optimist'
 require 'csv'
 require 'pry_debug'
 
-in_file="/home/jfrancis/.config/JS8Call.ini" # xxx
+in_file=Dir.home+"/.config/JS8Call.ini" # xxx
 
 # These are the command line options.
 opts=Optimist::options do
