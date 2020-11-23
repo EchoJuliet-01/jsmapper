@@ -9,6 +9,8 @@ require 'json'
 require 'optimist'
 require 'maidenhead'
 
+require 'pry_debug'
+
 # Set some defaults.
 mycall=nil
 verbose=false
@@ -304,10 +306,11 @@ def extract(message)
         message=(stuff.reverse.join(' ')).split(';')
         ftx['grid']=message[0].strip
       end
-      message[1..-1].map do |n| 
+#      p message
+      message[1..-1].each do |n| 
         item=n.split('=')
         ftx[item[0].strip.upcase]=item[1].strip.upcase
-      end
+                           end
       if(ftx.key?('grid')&&ftx.key?('PIR1'))
         type="FTX"
       end
@@ -328,7 +331,7 @@ end
 # Now let's write the output file.
 index=0
 File.open("amrron.csv", 'w') do |yacc|
-  msgs.filter {|m| m.type=="FTX"}.each do |message| 
+  msgs.select {|m| m.type=="FTX"}.each do |message| 
     callsign=message.from
     loc=message.lat_lon
 
