@@ -6,13 +6,12 @@
 
 require 'optimist'
 require 'csv'
-require 'pry_debug'
 
-in_file=Dir.home+"/.config/JS8Call.ini" # xxx
+in_file=Dir.home+"/.config/JS8Call.ini"
 
 # These are the command line options.
 opts=Optimist::options do
-  opt :in_file, "JS8Call log file (defaults to /home/pi/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
+  opt :in_file, "JS8Call log file (defaults to ~/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
 end
 
 # Get input file.
@@ -59,6 +58,14 @@ autoreplyonatstartup=sections['[Configuration]']["AutoreplyOnAtStartup"]
 accept_tcp_requests=sections['[Configuration]']["AcceptTCPRequests"]
 auto_grid=sections['[Configuration]']["AutoGrid"]
 dial_freq=sections['[Common]']["DialFreq"]
+
+puts()
+puts()
+puts("------------------------------------------------------------------------------")
+puts("This script only produces valid results if JS8Call is *NOT* currently running.")
+puts("------------------------------------------------------------------------------")
+puts()
+puts()
 
 puts("Your callsign is configured as #{call}.")
 if(grid=="")
@@ -131,4 +138,10 @@ else
   puts("Your station is not on frequency for the exercise. Please set dial frequency of 7120khz.")
 end
 
-#binding.pry
+puts()
+puts()
+puts("------------------------------------------------------------------------------")
+puts("This script only produces valid results if JS8Call is *NOT* currently running.")
+puts("------------------------------------------------------------------------------")
+puts()
+puts()
