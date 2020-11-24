@@ -9,8 +9,6 @@ require 'json'
 require 'optimist'
 require 'maidenhead'
 
-require 'pry_debug'
-
 # Set some defaults.
 mycall=nil
 verbose=false
