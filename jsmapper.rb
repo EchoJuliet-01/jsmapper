@@ -11,7 +11,6 @@ require 'maidenhead'
 
 # Set some defaults.
 mycall=nil
-verbose=false
 @dial_freq=0
 @bandwidth=999999999
 start_time=Time.parse("1970/01/01 00:00:00").to_i
@@ -31,12 +30,13 @@ opts=Optimist::options do
   opt :start_time, "Start time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
   opt :end_time, "End time/date (YYYY/MM/DD HH:MM:SS, system time zone)", :type => :string
   opt :in_file, "JS8Call log file (defaults to ~/.local/share/JS8Call/DIRECTED.TXT)", :type => :string
-  opt :verbose, "Spew verbose logging data"
+  opt :debug, "Spew debug data"
 end
 
-# See if the user wants extra spew.
-if opts[:verbose_given]
-  verbose=true
+# Debug?
+@debug=false
+if opts[:debug_given]
+  @debug=true
 end
 
 # The call sign is mandatory.
@@ -304,15 +304,17 @@ def extract(message)
         message=(stuff.reverse.join(' ')).split(';')
         ftx['grid']=message[0].strip
       end
-#      p message
-      message[1..-1].each do |n| 
-        item=n.split('=')
-        ftx[item[0].strip.upcase]=item[1].strip.upcase
-                           end
-      if(ftx.key?('grid')&&ftx.key?('PIR1'))
-        type="FTX"
+      if(message.class==Array)
+        p message if @debug
+        message[1..-1].each do |n| 
+          item=n.split('=')
+          ftx[item[0].strip.upcase]=item[1].strip.upcase
+        end
+        if(ftx.key?('grid')&&ftx.key?('PIR1'))
+          type="FTX"
+        end
+        return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
       end
-      return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
     end
   end
 end
