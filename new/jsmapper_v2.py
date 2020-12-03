@@ -131,7 +131,7 @@ def rx_thread(name):
                         # Wait half the specified time before we bug
                         # the AS if this is the first AS we've seen.
                         if(len(as_stations)==0):
-                            last_info=time.time()+(avg_info_wait/2)
+                            last_info=time.time()-(avg_info_wait/2)+random.randint(int(avg_info_wait*0.875),int(avg_info_wait*1.125))
                         as_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
                     # If there's (maybe) JSON data in the message, try
                     # to extract it. Failed extractions are caught by
