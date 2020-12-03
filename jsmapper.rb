@@ -207,9 +207,9 @@ def extract(message)
   # least pulling out the data your own station transmitted, as that's
   # the only place to find it.
   if(payload)
-    if((!payload.include?("…"))&&
-       (freq.to_i>0)&&(date.include?('-'))&&(time.include?(':'))&&
-       ((snr[0]=='+')||snr[0]=='-')&&(freq>=@dial_freq)&&
+    if((!payload.include?("…")) and 
+       (freq.to_i>0) and (date.include?('-')) and (time.include?(':')) and 
+       ((snr[0]=='+')||snr[0]=='-') and (freq>=@dial_freq) and 
        (freq<=@dial_freq+@bandwidth))
       
       # Grab timestamp.
@@ -302,11 +302,11 @@ def extract(message)
         if(!["ACK", "AGN?", "CMD", "CQ", "GRID", "GRID?", "HEARING",
              "HEARING?", "HEARTBEAT", "INFO", "INFO?", "MSG", "SNR",
              "SNR?", "STATUS", "STATUS?", "QUERY MSGS", "APRS::SMSGTE",
-             "NACK", "QUERY MSG", "QUERY"].member?(type)&&type[0]!='@')
+             "NACK", "QUERY MSG", "QUERY"].member?(type) and type[0]!='@')
           type="TEXT"
         end
         ftx=Hash.new
-        if((stuff[-1]=="MSG")&&(stuff[-2]=="INFO"))
+        if((stuff[-1]=="MSG") and (stuff[-2]=="INFO"))
           crap=stuff.pop
           crap=stuff.pop
           message=(stuff.reverse.join(' ')).split(';')
@@ -323,7 +323,7 @@ def extract(message)
             item=n.split('=')
             ftx[item[0].strip.upcase]=item[1].strip.upcase
           end
-          if(ftx.key?('grid')&&ftx.key?('PIR1'))
+          if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
             type="FTX"
           end
           return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
@@ -349,13 +349,13 @@ File.open("amrron.csv", 'w') do |yacc|
     callsign=message.from
     loc=message.lat_lon
 
-    if(message.ftx["PIR1"]=="G")
+    if((message.ftx["PIR1"]=="G") or (message.ftx["PRI1"]=="G"))
       sym_table=grn_code[0]
       sym_code=grn_code[1]
-    elsif(message.ftx["PIR1"]=="Y")
+    elsif((message.ftx["PIR1"]=="Y") or (message.ftx["PRI1"]=="Y"))
       sym_table=yel_code[0]
       sym_code=yel_code[1]
-    elsif(message.ftx["PIR1"]=="R")
+    elsif((message.ftx["PIR1"]=="R") or (message.ftx["PRI1"]=="R"))
       sym_table=red_code[0]
       sym_code=red_code[1]
     else
@@ -370,7 +370,7 @@ File.open("amrron.csv", 'w') do |yacc|
     # Write it all to the csv file.
     lat=message.aprs_lat
     lon=message.aprs_lon
-    if(lat&&lon)
+    if(lat and lon)
       yacc.puts("#{timestamp},#{"X0"+callsign[-2..-1]}>NULL:=#{lat}#{sym_table}#{lon}#{sym_code} #{message.ftx['grid']} #{message.message.join}")
     end
   end
