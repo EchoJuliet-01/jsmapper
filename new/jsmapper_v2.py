@@ -21,7 +21,7 @@ max_age=1890
 
 # Do some initializing.
 info=False
-a_stations={}
+as_stations={}
 last_info=time.time()
 last_sent_pir=last_info
 ack=False
@@ -39,7 +39,7 @@ s.settimeout(1)
 # within the alotted number of seconds (so we're not trying to talk to
 # an old station we might have last heard three days ago).
 def best_station(stations,max_age):
-    if(len(a_stations)>0):
+    if(len(as_stations)>0):
         now=time.time()
         best_call=False
         best_snr=-99999
@@ -67,7 +67,7 @@ def rx_thread(name):
     # really need to keep.
     global info
     global s
-    global a_stations
+    global as_stations
     global last_info
     global last_sent_pir
     global ack
@@ -128,7 +128,11 @@ def rx_thread(name):
                     # and the current timestamp so we know who to send
                     # data to later.
                     if("/A" in from_call):
-                        a_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
+                        # Wait half the specified time before we bug
+                        # the AS if this is the first AS we've seen.
+                        if(len(as_stations)==0):
+                            last_info=time.time()+(avg_info_wait/2)
+                        as_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
                     # If there's (maybe) JSON data in the message, try
                     # to extract it. Failed extractions are caught by
                     # the except below. TODO: Discard messages
@@ -138,7 +142,10 @@ def rx_thread(name):
                         now=time.time()
                         last_info=now
                         last_sent_pir=now
-                        a_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
+                        if(len(as_stations)==0):
+                            last_info=time.time()+(avg_info_wait/2)
+                        as_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
+                        # Parse the received JSON.
                         info=json.loads(value[value.find('{'):value.find('}')+1])
         # Catch exceptions. TODO: We need to be WAY more specific
         # about this. First, the socket.timeout (happens once per
@@ -165,12 +172,12 @@ while True:
     now=time.time()
     # Pick the best (ie, highest SNR) Aggregation Station to talk to
     # (if any).
-    best=best_station(a_stations,max_age)
+    best=best_station(as_stations,max_age)
     # Give an update to the user.
     if(info):
         print("I have the info I need: " + json.dumps(info))
     else:
-        if(len(a_stations)>0):
+        if(len(as_stations)>0):
             print("I do not have the info I need to generate a PIR. If I don't receive it in " + str(info_wait-int(now-last_info)) + " seconds, I'm going to ask for it.")
         else:
             print("I do not have the info I need to generate a PIR, and I have nobody to ask for it.")
