@@ -2,7 +2,6 @@
 # coding: utf-8
 
 # AmRRON, EJ-01
-# v1.0
 
 require 'time'
 require 'json'
