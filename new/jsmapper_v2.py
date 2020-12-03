@@ -163,54 +163,62 @@ thread1.start()
 # Now loop forever, watching the globals for status, and responding
 # appropriately. Also, give the user periodic updates as to the
 # internal status of the state machine.
-while True:
-    # Check the world every five seconds. TODO: Consider making this
-    # user-adjustable. Or at least move it to a constant at the top of
-    # the code.
-    time.sleep(5)
-    # Just so everybody below is on the same page...
-    now=time.time()
-    # Pick the best (ie, highest SNR) Aggregation Station to talk to
-    # (if any).
-    best=best_station(as_stations,max_age)
-    # Give an update to the user.
-    if(info):
-        print("I have the info I need: " + json.dumps(info))
-    else:
-        if(len(as_stations)>0):
-            print("I do not have the info I need to generate a PIR. If I don't receive it in " + str(info_wait-int(now-last_info)) + " seconds, I'm going to ask for it.")
+if __name__ == '__main__':
+    while True:
+        # Check the world every five seconds. TODO: Consider making
+        # this user-adjustable. Or at least move it to a constant at
+        # the top of the code.
+        time.sleep(5)
+        # Just so everybody below is on the same page...
+        now=time.time()
+        # Pick the best (ie, highest SNR) Aggregation Station to talk
+        # to (if any).
+        best=best_station(as_stations,max_age)
+        # Give an update to the user.
+        if(info):
+            print("I have the info I need: " + json.dumps(info))
         else:
-            print("I do not have the info I need to generate a PIR, and I have nobody to ask for it.")
-    if(best):
-        print("My Aggregation Station is: " + best)
-    else:
-        print("I have no Aggregation Station to talk to.")
-    if(info):
-        print("I am sending my PIR in " + str(pir_interval-int(now-last_sent_pir)) + " seconds.")
-    else:
-        print("I cannot send my PIR.")
-    if(ack):
-        print("I got my last ACK back.")
-    else:
-        print("I did not get my last ACK back (yet).")
-    print()
-    # If I have an Aggregation Station to talk to, and I've waited
-    # more than my timeout for him to broadcast his INFO, ask for it.
-    if(not(info) and (now>=last_info+info_wait) and (best)):
-        # Update the timeout.
-        last_info=now
-        # Re-randomize the wait (a little bit).
-        info_wait=random.randint(int(avg_info_wait*0.75),int(avg_info_wait*1.25))
-        # Send the INFO request to JS8Call.
-        send_message(best + " info?")
-    # If I have a valid Aggregation Station, periodically send my PIR
-    # data to him.
-    if((info) and (now>=last_sent_pir+pir_interval) and (best)):
-        # Update the timeout.
-        last_sent_pir=now
-        # Re-randomize the wait (a little bit).
-        pir_interval=random.randint(int(avg_pir_interval*0.75),int(avg_pir_interval*1.25))
-        # Note that I have an outstanding ACK I'm looking for.
-        ack=False
-        # Send the PIR to JS8Call (just a random value for now).
-        send_message("msg " + best + " " + grid + ";PIR1=" + ['R','Y','G','U'][random.randint(0,3)])
+            if(len(as_stations)>0):
+                print("I do not have the info I need to generate a PIR. If I don't receive it in " + str(info_wait-int(now-last_info)) + " seconds, I'm going to ask for it.")
+            else:
+                print("I do not have the info I need to generate a PIR, and I have nobody to ask for it.")
+        if(best):
+            print("My Aggregation Station is: " + best)
+        else:
+            print("I have no Aggregation Station to talk to.")
+        if(info):
+            print("I am sending my PIR in " + str(pir_interval-int(now-last_sent_pir)) + " seconds.")
+        else:
+            print("I cannot send my PIR.")
+        if(ack):
+            print("I got my last ACK back.")
+        else:
+            print("I did not get my last ACK back (yet).")
+        print()
+        # If I have an Aggregation Station to talk to, and I've waited
+        # more than my timeout for him to broadcast his INFO, ask for
+        # it.
+        if(not(info) and (now>=last_info+info_wait) and (best)):
+            # Update the timeout.
+            last_info=now
+            # Re-randomize the wait (a little bit).
+            info_wait=random.randint(int(avg_info_wait*0.75),int(avg_info_wait*1.25))
+            # Send the INFO request to JS8Call.
+            print()
+            print("Requesting INFO from " + best + "...")
+            print()
+            send_message(best + " info?")
+        # If I have a valid Aggregation Station, periodically send my
+        # PIR data to him.
+        if((info) and (now>=last_sent_pir+pir_interval) and (best)):
+            # Update the timeout.
+            last_sent_pir=now
+            # Re-randomize the wait (a little bit).
+            pir_interval=random.randint(int(avg_pir_interval*0.75),int(avg_pir_interval*1.25))
+            # Note that I have an outstanding ACK I'm looking for.
+            ack=False
+            # Send the PIR to JS8Call (just a random value for now).
+            print()
+            print("Sending PIR to " + best + "...")
+            print()
+            send_message("msg " + best + " " + grid + ";PIR1=" + ['R','Y','G','U'][random.randint(0,3)])
