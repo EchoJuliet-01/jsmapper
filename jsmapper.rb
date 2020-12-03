@@ -41,8 +41,8 @@ end
 
 # The call sign is mandatory.
 if !opts[:mycall_given]
-  puts "--mycall must be specified."
-  exit
+#  puts "--mycall must be specified."
+#  exit
 else
   mycall=opts[:mycall].upcase
 end
