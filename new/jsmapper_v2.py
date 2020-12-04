@@ -11,8 +11,8 @@ from threading import Thread
 
 # All of this will be user-supplied options in the future. For now,
 # they're hard-coded.
-host='localhost'
-port=2442
+js8_host='localhost'
+js8_port=2442
 grid="DM79"
 my_call="N0DUH"
 avg_pir_interval=300
@@ -32,7 +32,7 @@ info_wait=random.randint(int(avg_info_wait*0.75),int(avg_info_wait*1.25))
 
 # Open a socket to JS8Call.
 s=socket.socket()
-s.connect((host,port))
+s.connect((js8_host,js8_port))
 s.settimeout(1)
 
 # Return the callsign of the station with the best SNR, but heard
@@ -156,14 +156,14 @@ def rx_thread(name):
             # For now, just count the errors. No reason. Just because.
             n=n+1
 
-# Start the RX thread.
-thread1 = Thread(target=rx_thread, args=("RX Thread",))
-thread1.start()
-
-# Now loop forever, watching the globals for status, and responding
-# appropriately. Also, give the user periodic updates as to the
-# internal status of the state machine.
 if __name__ == '__main__':
+    # Start the RX thread.
+    thread1 = Thread(target=rx_thread, args=("RX Thread",))
+    thread1.start()
+
+    # Now loop forever, watching the globals for status, and
+    # responding appropriately. Also, give the user periodic updates
+    # as to the internal status of the state machine.
     while True:
         # Check the world every five seconds. TODO: Consider making
         # this user-adjustable. Or at least move it to a constant at
