@@ -16,8 +16,8 @@ from threading import Thread
 # they're hard-coded.
 js8_host='localhost'
 js8_port=2442
-grid="DM79"
-my_call="N0WAY"
+grid=""
+my_call=""
 avg_pir_interval=300
 avg_info_wait=300
 max_age=3690
@@ -26,17 +26,21 @@ max_age=3690
 info=False
 as_stations={}
 heard_stations={}
+my_pirs={}
 last_info=time.time()
 last_sent_pir=last_info
 ack=False
+dial_freq=-1
+offset_freq=-1
+mode_speed=-1
 cherrypy.config.update({'server.socket_port': 8000})
 cherrypy.server.socket_host = '0.0.0.0'
 
 # Testing only... TODO: Remove
-as_stations['N0CLU']=[7,time.time()-random.randint(0,3600)]
-as_stations['N0DUH']=[-5,time.time()-random.randint(0,3600)]
+as_stations['N0WAY']=[-7,time.time()-random.randint(0,3600)]
+as_stations['N0BDY']=[-5,time.time()-random.randint(0,3600)]
 as_stations['N0SHT']=[-17,time.time()-random.randint(0,3600)]
-info={"GRID":"S;6","PIR1":"R"}
+#info={"GRID":"10","PIR1":"R","PIR2":"R"}
 heard_stations['AA0AA']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DN11;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
 heard_stations['AA0BB']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DM12;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
 heard_stations['AA0CC']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DL13;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
@@ -76,6 +80,30 @@ def send_message(message):
     s.sendall(bytes(json.dumps({'params': {}, 'type': 'TX.SEND_MESSAGE', 'value': message})+"\r\n",'utf-8'))
     return
 
+# Ask JS8Call for the current modulation speed.
+def get_speed():
+    global s
+    s.sendall(bytes(json.dumps({'params': {}, 'type': 'MODE.GET_SPEED', 'value': ''})+"\r\n",'utf-8'))
+    return
+
+# Ask JS8Call for the current rig frequency.
+def get_rig_freq():
+    global s
+    s.sendall(bytes(json.dumps({'params': {}, 'type': 'RIG.GET_FREQ', 'value': ''})+"\r\n",'utf-8'))
+    return
+
+# Ask JS8Call for the grid square as configured in the software.
+def get_my_grid():
+    global s
+    s.sendall(bytes(json.dumps({'params': {}, 'type': 'STATION.GET_GRID', 'value': ''})+"\r\n",'utf-8'))
+    return
+
+# Ask JS8Call for my callsign as configured in the software.
+def get_my_call():
+    global s
+    s.sendall(bytes(json.dumps({'params': {}, 'type': 'STATION.GET_CALLSIGN', 'value': ''})+"\r\n",'utf-8'))
+    return
+
 def web_thread(name):
     print("Starting " + name)
     print()
@@ -103,6 +131,11 @@ def rx_thread(name):
     global last_info
     global last_sent_pir
     global ack
+    global grid
+    global my_call
+    global dial_freq
+    global offset_freq
+    global mode_speed
     print("Starting " + name)
     print()
     n=0
@@ -119,7 +152,21 @@ def rx_thread(name):
             # from JS8Call: Directed Messages. We discard all other
             # traffic.
             if 'type' in stuff:
-                if(stuff['type']=='RX.DIRECTED'):
+                if(stuff['type']=='MODE.SPEED'):
+                    print(stuff)
+                    mode_speed=int(stuff['params']['SPEED'])
+                if(stuff['type']=='RIG.FREQ'):
+                    print(stuff)
+                    dial_freq=int(stuff['params']['DIAL'])/1000.0
+                    offset_freq=int(stuff['params']['OFFSET'])
+                if(stuff['type']=='STATION.GRID'):
+                    print(stuff)
+                    grid=stuff['value']
+                if(stuff['type']=='STATION.CALLSIGN'):
+                    print(stuff)
+                    my_call=stuff['value']
+                elif(stuff['type']=='RX.DIRECTED'):
+                    print(stuff)
                     # Extract everything interesting from the received
                     # message. We don't use all of it (right now), but
                     # it's easy enough to grab, so we do.
@@ -202,21 +249,139 @@ def as_stations_html():
     string=string+"</table>"
     return(string)
 
+def rgyu_to_word(n):
+    if(n=="R"):
+        return("Red")
+    elif(n=="G"):
+        return("Green")
+    elif(n=="Y"):
+        return("Yellow")
+    else:
+        return("Unknown")
+
 def heard_stations_html():
     string=""
-    string=string+"<table border=1><tr><th>Call</th><th>SNR</th><th>Last Heard</th><th>Grid</th><th>PIR1</th></tr>"
-    for call in list(heard_stations.keys()):
-        string=string+"<tr><td>"+call+"</td><td>"+str(heard_stations[call][0])+"</td><td>"+time.asctime(time.gmtime(heard_stations[call][1]))+"</td><td>"+heard_stations[call][2].split(';')[0]+"</td><td>"+heard_stations[call][2].split(';')[1].split('=')[1]+"</td></tr>"
-    string=string+"</table>"
+    if(info):
+        string=string+"<table border=1><tr><th>Call</th><th>SNR</th><th>Last Heard</th>"
+        for key in list(info.keys()):
+            string=string+"<th>"+key+"</th>"
+        string=string+"</tr>"
+        for call in list(heard_stations.keys()):
+            string=string+"<tr>"
+            string=string+"<td>"+call+"</td><td>"+str(heard_stations[call][0])+"</td>"
+            string=string+"<td>"+time.asctime(time.gmtime(heard_stations[call][1]))+"</td>"
+            heard_data=heard_stations[call][2].split(';')[::-1]
+            # TODO: trim each one
+            if("GRID" in info):
+                this_grid=heard_data.pop()
+            data={}
+            for item in heard_data:
+                tmp=item.split('=')
+                data[tmp[0]]=tmp[1]
+            for key in list(info.keys()):
+                if(key=="GRID"):
+                    string=string+"<td>"+this_grid+"</td>"
+                else:
+                    if(key in data):
+                        if(info[key]=="R"):
+                            string=string+"<td>"+rgyu_to_word(data[key])+"</td>"
+                        else:
+                            string=string+"<td>"+data[key]+"</td>"
+                    else:
+                        string=string+"<td></td>"
+            string=string+"</tr>"
+        string=string+"</table>"
+    else:
+        string=string+"<table border=1><tr><th>Call</th><th>SNR</th><th>Last Heard</th><th>Data</th></tr>"
+        for call in list(heard_stations.keys()):
+            string=string+"<tr><td>"+call+"</td><td>"+str(heard_stations[call][0])+"</td><td>"+time.asctime(time.gmtime(heard_stations[call][1]))+"</td><td>"+heard_stations[call][2]+"</td></tr>"
+        string=string+"</table>"
+    return(string)
+
+def not_negative(n):
+    if(n>=0):
+        return(n)
+    else:
+        return(0)
+
+def info_html():
+    if(info):
+        string=""
+        for key in list(info.keys()):
+            if(key!="GRID"):
+                if(key in my_pirs):
+                    if(info[key]=="R"):
+                        string=string+"<tr><td>"+key+"</td><td>"+rgyu_to_word(my_pirs[key])+"</td></tr>"
+                    else:
+                        string=string+"<tr><td>"+key+"</td><td>"+my_pirs[key]+"</td></tr>"
+                else:
+                    string=string+"<tr><td>"+key+"</td><td></td></tr>"
+        return(string)
+    else:
+        return("<tr><td></td><td></td></tr>")
+
+def speed_word(n):
+    if(n>=0 and n<=4):
+        return(["Normal", "Fast", "Turbo", "Invalid", "Slow"][n])
+    else:
+        return("Unknown")
+
+def value_or_unk(n):
+    if(n<0):
+        return("Unknown")
+    else:
+        return(str(n))
+
+def selected(a,b):
+    if(a==b):
+        return(" selected")
+    else:
+        return("")
+
+def pir_form_html():
+    if(info):
+        string=""
+        for key in list(info.keys()):
+            if(key=="GRID"):
+                string=string+"<tr><td>Grid</td><td>"+grid+"</td></tr>"
+            else:
+                if(key in my_pirs):
+                    if(info[key]=="R"):
+                        string=string+"<tr><td>"+key+"</td><td>"
+                        string=string+"<select name=\""+key+"\">"
+                        string=string+"<option value=\"G\""+selected(my_pirs(key)),"G"+">Green</option>"
+                        string=string+"<option value=\"Y\""+selected(my_pirs(key)),"Y"+">Yellow</option>"
+                        string=string+"<option value=\"R\""+selected(my_pirs(key)),"R"+">Red</option>"
+                        string=string+"<option value=\"U\""+selected(my_pirs(key)),"U"+">Unknown</option>"
+                        string=string+"</select>"
+                        string=string+"</td></tr>"
+                    else:
+                        string=string+"<tr><td>"+key+"</td><td><input type=\"text\" value=\""+my_pirs[key]+"\" name=\""+key+"\" /></td></tr>"
+                else:
+                    if(info[key]=="R"):
+                        string=string+"<tr><td>"+key+"</td><td>"
+                        string=string+"<select name=\""+key+"\">"
+                        string=string+"<option value=\"G\">Green</option>"
+                        string=string+"<option value=\"Y\">Yellow</option>"
+                        string=string+"<option value=\"R\">Red</option>"
+                        string=string+"<option value=\"U\">Unknown</option>"
+                        string=string+"</select>"
+                        string=string+"</td></tr>"
+                    else:
+                        string=string+"<tr><td>"+key+"</td><td><input type=\"text\" name=\""+key+"\" /></td></tr>"
     return(string)
 
 class jsmapper_generator(object):
     @cherrypy.expose
-    def index(self):
+    def index(self, **stuff):
+        global my_pirs
+        if(len(stuff)>0):
+            for key in stuff:
+                my_pirs[key]=stuff[key]
         return """<html>
           <head>
             <link href="/static/css/style.css" rel="stylesheet">
-            <meta http-equiv="refresh" content="5">
+            <meta http-equiv = "refresh" content = "5; url = /"/>
           </head>
           <body>
             <center>
@@ -227,12 +392,35 @@ class jsmapper_generator(object):
             <p>My Info</p>
             <table border=1>
               <tr><td>Call</td><td>""" + my_call + """</td></tr>
-              <tr><td>Info</td><td>""" + json.dumps(info) + """</td></tr>
-              <tr><td></td><td></td></tr>
               <tr><td>Grid</td><td>""" + grid + """</td></tr>
-              <tr><td>PIR1</td><td>Green</td></tr>
+              <tr><td>Modulation Speed</td><td>""" + speed_word(mode_speed) + """</td></tr>
+              <tr><td>Dial Freq</td><td>""" + value_or_unk(dial_freq) + """ khz</td></tr>
+              <tr><td>Offset</td><td>""" + value_or_unk(offset_freq) + """ hz</td></tr>
+              <tr><td>Transmit Freq</td><td>""" + value_or_unk(dial_freq+(offset_freq/1000)) + """ khz</td></tr>
               <tr><td></td><td></td></tr>
-              <tr><td>Sending in</td><td>""" + str(pir_interval-int(time.time()-last_sent_pir)) + """ seconds</td></tr>
+              <tr><td>Reporting Format</td><td>""" + json.dumps(info) + """</td></tr>
+              <tr><td></td><td></td></tr>
+              """ + info_html() + """
+              <tr><td></td><td></td></tr>
+              <tr><td>Sending in</td><td>""" + str(not_negative(pir_interval-int(time.time()-last_sent_pir))) + """ seconds</td></tr>
+            </table>
+            <br />
+            <br />
+            <table>
+              <tr>
+                <td>
+                  <form method="get" action="setpir">
+                    <input type="hidden" name="send" value="now">
+                    <button style="background-color: #daad86;" type="submit">Set PIR Values</button>
+                  </form>
+                </td>
+                <td>
+                  <form method="get" action="sendpirs">
+                    <input type="hidden" name="send" value="now">
+                    <button style="background-color: #daad86;" type="submit">Send PIR Now</button>
+                  </form>
+                </td>
+              </tr>
             </table>
             <br />
             <br />
@@ -251,20 +439,42 @@ class jsmapper_generator(object):
         </html>"""
 
     @cherrypy.expose
-    def form(self):
+    def sendpirs(self, send=False):
+        global last_sent_pir
+        global avg_pir_interval
+        last_sent_pir=time.time()-(2*avg_pir_interval)
         return """<html>
-          <head></head>
+          <head>
+            <link href="/static/css/style.css" rel="stylesheet">
+            <meta http-equiv = "refresh" content = "1; url = /"/>
+          </head>
           <body>
-            <form method="get" action="generate">
-              <input type="text" value="8" name="length" />
-              <button type="submit">Give it now!</button>
-            </form>
           </body>
         </html>"""
 
     @cherrypy.expose
-    def generate(self, length=8):
-        return ''.join(random.sample(string.hexdigits, int(length)))
+    def setpir(self, send=False):
+        return """<html>
+          <head>
+            <link href="/static/css/style.css" rel="stylesheet">
+          </head>
+          <body>
+            <center>
+              <img src="/static/images/amrron_small.png" alt="AmRRON" />
+            </center>
+            <br />
+            <br />
+            <p>PIRs</p>
+            <form method="get" action="index">
+              <table border=1>
+                """ + pir_form_html() + """
+              </table>
+              <button style="background-color: #daad86;" type="submit">Update/Set PIR Status</button>
+            </form>
+            <br />
+            <br />
+          </body>
+        </html>"""
 
 if __name__ == '__main__':
     # Start the RX thread.
@@ -277,10 +487,25 @@ if __name__ == '__main__':
     # responding appropriately. Also, give the user periodic updates
     # as to the internal status of the state machine.
     while True:
+        # Fetch my grid from JS8Call each time through the loop, in
+        # case the user updates it.
+        get_my_grid()
+        time.sleep(0.5)
+        # Fetch my callsign from JS8Call each time through the loop,
+        # in case the user updates it.
+        get_my_call()
+        time.sleep(0.5)
+        # Fetch the current frequency from JS8Call each time through the loop.
+        get_rig_freq()
+        time.sleep(0.5)
+        # Fetch the current modulation speed from JS8Call each time
+        # through the loop.
+        get_speed()
+        time.sleep(0.5)
         # Check the world every five seconds. TODO: Consider making
         # this user-adjustable. Or at least move it to a constant at
         # the top of the code.
-        time.sleep(5)
+        time.sleep(3)
         # Just so everybody below is on the same page...
         now=time.time()
         # Pick the best (ie, highest SNR) Aggregation Station to talk
@@ -322,7 +547,7 @@ if __name__ == '__main__':
             send_message(best + " info?")
         # If I have a valid Aggregation Station, periodically send my
         # PIR data to him.
-        if((info) and (now>=last_sent_pir+pir_interval) and (best)):
+        if((info) and (now>=last_sent_pir+pir_interval) and (best) and len(my_pirs)>0):
             # Update the timeout.
             last_sent_pir=now
             # Re-randomize the wait (a little bit).
@@ -330,10 +555,17 @@ if __name__ == '__main__':
             # Note that I have an outstanding ACK I'm looking for.
             ack=False
             # Send the PIR to JS8Call (just a random value for now).
+            string=""
+            if("GRID" in info):
+                string=string+grid+";"
+            for key in list(info.keys()):
+                if((key in my_pirs) and (key!="GRID")):
+                    string=string+key+"="+my_pirs[key]+";"
+            if(string[-1:]==";"):
+                string=string[0:-1]
             print()
             print("Sending PIR to " + best + "...")
             print()
-            send_message("msg " + best + " " + grid + ";PIR1=" + ['R','Y','G','U'][random.randint(0,3)])
-
+            send_message(best + " MSG " + string)
 
 # https://docs.cherrypy.org/en/latest/tutorials.html#tutorials
