@@ -1,4 +1,4 @@
-#!/usr/bin/python3.8
+#!/usr/bin/env python3
 # coding: utf-8
 
 # AmRRON, EJ-01
@@ -7,6 +7,9 @@ import socket
 import json
 import time
 import random
+import cherrypy
+import string
+import os, os.path
 from threading import Thread
 
 # All of this will be user-supplied options in the future. For now,
@@ -14,17 +17,31 @@ from threading import Thread
 js8_host='localhost'
 js8_port=2442
 grid="DM79"
-my_call="N0DUH"
+my_call="N0WAY"
 avg_pir_interval=300
 avg_info_wait=300
-max_age=1890
+max_age=3690
 
 # Do some initializing.
 info=False
 as_stations={}
+heard_stations={}
 last_info=time.time()
 last_sent_pir=last_info
 ack=False
+cherrypy.config.update({'server.socket_port': 8000})
+cherrypy.server.socket_host = '0.0.0.0'
+
+# Testing only... TODO: Remove
+as_stations['N0CLU']=[7,time.time()-random.randint(0,3600)]
+as_stations['N0DUH']=[-5,time.time()-random.randint(0,3600)]
+as_stations['N0SHT']=[-17,time.time()-random.randint(0,3600)]
+info={"GRID":"S;6","PIR1":"R"}
+heard_stations['AA0AA']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DN11;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0BB']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DM12;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0CC']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DL13;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0DD']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DK14;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0EE']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DJ15;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
 
 # Randomize the intervals a bit so stations don't step on each other.
 pir_interval=random.randint(int(avg_pir_interval*0.75),int(avg_pir_interval*1.25))
@@ -58,6 +75,21 @@ def send_message(message):
     global s
     s.sendall(bytes(json.dumps({'params': {}, 'type': 'TX.SEND_MESSAGE', 'value': message})+"\r\n",'utf-8'))
     return
+
+def web_thread(name):
+    print("Starting " + name)
+    print()
+    conf = {
+        '/': {
+            'tools.sessions.on': True,
+            'tools.staticdir.root': os.path.abspath(os.getcwd())
+        },
+        '/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': './public'
+        }
+    }
+    cherrypy.quickstart(jsmapper_generator(), '/', conf)
 
 # Due to the way JS8Call sends data to an API client (ie, it just
 # sends random JSON data whenever it pleases), we'll receive all
@@ -156,11 +188,91 @@ def rx_thread(name):
             # For now, just count the errors. No reason. Just because.
             n=n+1
 
+def as_stations_html():
+    global as_stations
+    global max_age
+    best=best_station(as_stations,max_age)
+    string=""
+    string=string+"<table border=1><tr><th>Call</th><th>SNR</th><th>Last Heard</th><th>Selected</th></tr>"
+    for call in list(as_stations.keys()):
+        if(best==call):
+            string=string+"<tr><td>"+call+"</td><td>"+str(as_stations[call][0])+"</td><td>"+time.asctime(time.gmtime(as_stations[call][1]))+"</td><td><center>***</center></td></tr>"
+        else:
+            string=string+"<tr><td>"+call+"</td><td>"+str(as_stations[call][0])+"</td><td>"+time.asctime(time.gmtime(as_stations[call][1]))+"</td><td></td></tr>"
+    string=string+"</table>"
+    return(string)
+
+def heard_stations_html():
+    string=""
+    string=string+"<table border=1><tr><th>Call</th><th>SNR</th><th>Last Heard</th><th>Grid</th><th>PIR1</th></tr>"
+    for call in list(heard_stations.keys()):
+        string=string+"<tr><td>"+call+"</td><td>"+str(heard_stations[call][0])+"</td><td>"+time.asctime(time.gmtime(heard_stations[call][1]))+"</td><td>"+heard_stations[call][2].split(';')[0]+"</td><td>"+heard_stations[call][2].split(';')[1].split('=')[1]+"</td></tr>"
+    string=string+"</table>"
+    return(string)
+
+class jsmapper_generator(object):
+    @cherrypy.expose
+    def index(self):
+        return """<html>
+          <head>
+            <link href="/static/css/style.css" rel="stylesheet">
+            <meta http-equiv="refresh" content="5">
+          </head>
+          <body>
+            <center>
+              <img src="/static/images/amrron_small.png" alt="AmRRON" />
+            </center>
+            <br />
+            <br />
+            <p>My Info</p>
+            <table border=1>
+              <tr><td>Call</td><td>""" + my_call + """</td></tr>
+              <tr><td>Info</td><td>""" + json.dumps(info) + """</td></tr>
+              <tr><td></td><td></td></tr>
+              <tr><td>Grid</td><td>""" + grid + """</td></tr>
+              <tr><td>PIR1</td><td>Green</td></tr>
+              <tr><td></td><td></td></tr>
+              <tr><td>Sending in</td><td>""" + str(pir_interval-int(time.time()-last_sent_pir)) + """ seconds</td></tr>
+            </table>
+            <br />
+            <br />
+            <p>Aggregation Stations Heard</p>
+           """ + as_stations_html() + """
+            <br />
+            <br />
+            <p>Reporting Stations Heard</p>
+           """ + heard_stations_html() + """
+            <br />
+            <br />
+           """ + time.asctime(time.gmtime(time.time())) + """
+            <br />
+            <br />
+          </body>
+        </html>"""
+
+    @cherrypy.expose
+    def form(self):
+        return """<html>
+          <head></head>
+          <body>
+            <form method="get" action="generate">
+              <input type="text" value="8" name="length" />
+              <button type="submit">Give it now!</button>
+            </form>
+          </body>
+        </html>"""
+
+    @cherrypy.expose
+    def generate(self, length=8):
+        return ''.join(random.sample(string.hexdigits, int(length)))
+
 if __name__ == '__main__':
     # Start the RX thread.
     thread1 = Thread(target=rx_thread, args=("RX Thread",))
     thread1.start()
-
+    thread2 = Thread(target=web_thread, args=("Web Server Thread",))
+    thread2.start()
+    print()
     # Now loop forever, watching the globals for status, and
     # responding appropriately. Also, give the user periodic updates
     # as to the internal status of the state machine.
@@ -222,3 +334,6 @@ if __name__ == '__main__':
             print("Sending PIR to " + best + "...")
             print()
             send_message("msg " + best + " " + grid + ";PIR1=" + ['R','Y','G','U'][random.randint(0,3)])
+
+
+# https://docs.cherrypy.org/en/latest/tutorials.html#tutorials

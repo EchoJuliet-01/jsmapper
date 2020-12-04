@@ -1,0 +1,28 @@
+body {
+ background-color: #4d4721;
+ color: #000000;
+}
+h1 {
+ color: #ffff33;
+ text-align: center;
+ font: italic 200% fantasy;
+}
+p {
+ background-color: #daad86;
+ color: #333300;
+ width: 1200px;
+ text-align: left;
+ font: italic 100% courier new;
+}
+td {
+ background-color: #daad86;
+ color: #333300;
+ text-align: left;
+ font: italic 100% courier new;
+}
+th {
+ background-color: #bc986a;
+ color: #333300;
+ text-align: left;
+ font: italic 100% courier new;
+}
