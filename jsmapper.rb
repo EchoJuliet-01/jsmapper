@@ -10,6 +10,7 @@ require 'maidenhead'
 
 # Set some defaults.
 mycall=nil
+@n=0
 @dial_freq=0
 @bandwidth=999999999
 @start_time=Time.parse("1970/01/01 00:00:00").to_i
@@ -331,7 +332,11 @@ def extract(message)
                 p message if @debug
                 message[1..-1].each do |n| 
                   item=n.split('=')
-                  ftx[item[0].strip.upcase]=item[1].strip.upcase
+                  begin
+                    ftx[item[0].strip.upcase]=item[1].strip.upcase
+                  rescue
+                    @n=@n+1
+                  end
                 end
                 if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
                   type="FTX"
