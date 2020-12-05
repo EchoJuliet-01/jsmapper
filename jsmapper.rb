@@ -12,8 +12,8 @@ require 'maidenhead'
 mycall=nil
 @dial_freq=0
 @bandwidth=999999999
-start_time=Time.parse("1970/01/01 00:00:00").to_i
-end_time=Time.now.to_i
+@start_time=Time.parse("1970/01/01 00:00:00").to_i
+@end_time=Time.now.to_i
 in_file=Dir.home+"/.local/share/JS8Call/DIRECTED.TXT"
 
 red_code=['/',':'] # Fire
@@ -62,12 +62,12 @@ end
 
 # Start time.
 if opts[:start_time_given]
-  start_time=Time.parse(opts[:start_time]).to_i
+  @start_time=Time.parse(opts[:start_time]).to_i
 end
 
 # End time.
 if opts[:end_time_given]
-  end_time=Time.parse(opts[:end_time]).to_i
+  @end_time=Time.parse(opts[:end_time]).to_i
 end
 
 # Get input file.
@@ -76,9 +76,9 @@ if opts[:in_file_given]
 end
 
 puts("My Call: #{mycall}")
-if(start_time!=Time.parse("1970/01/01 00:00:00").to_i)
-  puts("Start Time: #{Time.at(start_time).to_s}")
-  puts("End Time: #{Time.at(end_time).to_s}")
+if(@start_time!=Time.parse("1970/01/01 00:00:00").to_i)
+  puts("Start Time: #{Time.at(@start_time).to_s}")
+  puts("End Time: #{Time.at(@end_time).to_s}")
 else
   puts("Will parse records with all timestamps.")
 end
@@ -218,124 +218,127 @@ def extract(message)
       
       # Grab timestamp.
       timestamp_t=Time.parse(date+" "+time+" GMT").to_i
-      
-      # Trim off the EOM marker, clean up the message content, split
-      # it up into words, and store it in a reversed array so we can
-      # start popping things off for analysis, one by one.
-      flag=true
-      # Don't choke on bogus UTF-8, just skip it.
-      begin
-        stuff=payload.gsub('♢','').gsub(' ?','').strip.split.reverse
-      rescue ArgumentError
-        flag=false
-      end
-      
-      if(flag)
-        # Clear all the vars.
-        from=nil
-        to=nil
-        from_relay=nil
-        to_relay=nil
-        
-        # The from call will always be first.
-        from=stuff.pop
-        
-        # Now it starts getting weird. JS8Call allows for spaces in
-        # the call sign (dude, WTF?). Sometimes people separate out
-        # the "/P" or "/M" with a space, so keep pulling stuff until
-        # you find the ':'. If there are spaces, keep only the first
-        # bit; everything else is trash (for our purposes). Once we
-        # find the trailing ':', we're done.  Strip off the
-        # "/whatever" bits (if there are any), and we're left with our
-        # from call. Unless the user did something *REALLY* strange
-        # with his call sign, which case, screw it, he doesn't get
-        # logged).  Much of this goes out the window if it's a relay
-        # station. We'll deal with that below.
-        crap=from
-        # In theory, this could blow up if the payload is
-        # mangled. Should probably add some logic for that here.
-        while(!crap.include?(':'))
-          crap=stuff.pop
+
+      # We only care about messages in the time window.
+      if(timestamp_t>=@start_time and timestamp_t<=@end_time)
+        # Trim off the EOM marker, clean up the message content, split
+        # it up into words, and store it in a reversed array so we can
+        # start popping things off for analysis, one by one.
+        flag=true
+        # Don't choke on bogus UTF-8, just skip it.
+        begin
+          stuff=payload.gsub('♢','').gsub(' ?','').strip.split.reverse
+        rescue ArgumentError
+          flag=false
         end
-        from=(from.split('/'))[0].gsub(':','')
         
-        # After the ':' word at the beginning, the next word is the to
-        # call. It may or may not be the final to call; it could be
-        # the intermediate relay. We'll figure that out in a minute.
-        to=stuff.pop
-        if(stuff[1]=="*DE*")
-          from_relay=from
-          from=(stuff[0].gsub('>','').split('/'))[0]
-          stuff=stuff[2..-1]
-        end
-        to=(to.gsub('>','').split('/'))[0]
-        
-        # Now grab the next word in the message payload. If it ends in
-        # '>', it's the actual to call, and what we stored as the to
-        # previously is actually a relay. If it has a '>' in the
-        # middle of the word, then in theory, it's the actual to call
-        # munged together with the first word of the payload because
-        # the luser didn't leave a space in his message after the to
-        # call. We have no reasonable way to disambiguate that from
-        # the first word of the message not being a call but having an
-        # embedded '>', so we'll assume the former, split the pieces,
-        # and push the bit of text after the '>' back into the
-        # message. If there's no '>' at all, then we grabbed the first
-        # word of the actual message payload, so we'll push it
-        # back. It's possible there's no more text at this point (ie,
-        # it's an empty message, though that would be dumb).
-        if(stuff.length>0)
-          tmp=stuff.pop
-          if(tmp[-1]=='>')
-            to_relay=to
-            to=(tmp.gsub('>','').split('/'))[0]
-          elsif(tmp.include?('>'))
-            to_relay=to
-            thing=tmp.split('>',2)
-            to=thing[0].split('/')[0]
-            stuff.push(thing[1])
-          else
-            stuff.push(tmp)
-          end
-        end
-        group=false
-        if(to[0]=='@')
-          group=true
-        end
-        type=stuff[-1]
-        if(type)
-          if(!["ACK", "AGN?", "CMD", "CQ", "GRID", "GRID?", "HEARING",
-               "HEARING?", "HEARTBEAT", "INFO", "INFO?", "MSG", "SNR",
-               "SNR?", "STATUS", "STATUS?", "QUERY MSGS", "APRS::SMSGTE",
-               "NACK", "QUERY MSG", "QUERY"].member?(type) and type[0]!='@')
-            type="TEXT"
-          end
-          ftx=Hash.new
-          if((stuff[-1]=="MSG") and (stuff[-2]=="INFO"))
+        if(flag)
+          # Clear all the vars.
+          from=nil
+          to=nil
+          from_relay=nil
+          to_relay=nil
+          
+          # The from call will always be first.
+          from=stuff.pop
+          
+          # Now it starts getting weird. JS8Call allows for spaces in
+          # the call sign (dude, WTF?). Sometimes people separate out
+          # the "/P" or "/M" with a space, so keep pulling stuff until
+          # you find the ':'. If there are spaces, keep only the first
+          # bit; everything else is trash (for our purposes). Once we
+          # find the trailing ':', we're done.  Strip off the
+          # "/whatever" bits (if there are any), and we're left with our
+          # from call. Unless the user did something *REALLY* strange
+          # with his call sign, which case, screw it, he doesn't get
+          # logged).  Much of this goes out the window if it's a relay
+          # station. We'll deal with that below.
+          crap=from
+          # In theory, this could blow up if the payload is
+          # mangled. Should probably add some logic for that here.
+          while(!crap.include?(':'))
             crap=stuff.pop
-            crap=stuff.pop
-            message=(stuff.reverse.join(' ')).split(';')
-            ftx['grid']=message[0].strip
           end
-          if(stuff[-1]=="INFO")
-            crap=stuff.pop
-            message=(stuff.reverse.join(' ')).split(';')
-            if(message.length>0)
+          from=(from.split('/'))[0].gsub(':','')
+          
+          # After the ':' word at the beginning, the next word is the to
+          # call. It may or may not be the final to call; it could be
+          # the intermediate relay. We'll figure that out in a minute.
+          to=stuff.pop
+          if(stuff[1]=="*DE*")
+            from_relay=from
+            from=(stuff[0].gsub('>','').split('/'))[0]
+            stuff=stuff[2..-1]
+          end
+          to=(to.gsub('>','').split('/'))[0]
+          
+          # Now grab the next word in the message payload. If it ends in
+          # '>', it's the actual to call, and what we stored as the to
+          # previously is actually a relay. If it has a '>' in the
+          # middle of the word, then in theory, it's the actual to call
+          # munged together with the first word of the payload because
+          # the luser didn't leave a space in his message after the to
+          # call. We have no reasonable way to disambiguate that from
+          # the first word of the message not being a call but having an
+          # embedded '>', so we'll assume the former, split the pieces,
+          # and push the bit of text after the '>' back into the
+          # message. If there's no '>' at all, then we grabbed the first
+          # word of the actual message payload, so we'll push it
+          # back. It's possible there's no more text at this point (ie,
+          # it's an empty message, though that would be dumb).
+          if(stuff.length>0)
+            tmp=stuff.pop
+            if(tmp[-1]=='>')
+              to_relay=to
+              to=(tmp.gsub('>','').split('/'))[0]
+            elsif(tmp.include?('>'))
+              to_relay=to
+              thing=tmp.split('>',2)
+              to=thing[0].split('/')[0]
+              stuff.push(thing[1])
+            else
+              stuff.push(tmp)
+            end
+          end
+          group=false
+          if(to[0]=='@')
+            group=true
+          end
+          type=stuff[-1]
+          if(type)
+            if(!["ACK", "AGN?", "CMD", "CQ", "GRID", "GRID?", "HEARING",
+                 "HEARING?", "HEARTBEAT", "INFO", "INFO?", "MSG", "SNR",
+                 "SNR?", "STATUS", "STATUS?", "QUERY MSGS", "APRS::SMSGTE",
+                 "NACK", "QUERY MSG", "QUERY"].member?(type) and type[0]!='@')
+              type="TEXT"
+            end
+            ftx=Hash.new
+            if((stuff[-1]=="MSG") and (stuff[-2]=="INFO"))
+              crap=stuff.pop
+              crap=stuff.pop
+              message=(stuff.reverse.join(' ')).split(';')
               ftx['grid']=message[0].strip
             end
-          end
-          if(message.class==Array)
-            if(message.length>0)
-              p message if @debug
-              message[1..-1].each do |n| 
-                item=n.split('=')
-                ftx[item[0].strip.upcase]=item[1].strip.upcase
-              end
-              if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
-                type="FTX"
+            if(stuff[-1]=="INFO")
+              crap=stuff.pop
+              message=(stuff.reverse.join(' ')).split(';')
+              if(message.length>0)
+                ftx['grid']=message[0].strip
               end
             end
-            return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
+            if(message.class==Array)
+              if(message.length>0)
+                p message if @debug
+                message[1..-1].each do |n| 
+                  item=n.split('=')
+                  ftx[item[0].strip.upcase]=item[1].strip.upcase
+                end
+                if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
+                  type="FTX"
+                end
+              end
+              return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
+            end
           end
         end
       end
