@@ -318,7 +318,11 @@ def extract(message)
               crap=stuff.pop
               crap=stuff.pop
               message=(stuff.reverse.join(' ')).split(';')
-              ftx['grid']=message[0].strip
+              begin
+                ftx['grid']=message[0].strip
+              rescue
+                @n=@n+1
+              end
             end
             if(stuff[-1]=="INFO")
               crap=stuff.pop
