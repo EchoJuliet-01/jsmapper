@@ -303,38 +303,40 @@ def extract(message)
           group=true
         end
         type=stuff[-1]
-        if(!["ACK", "AGN?", "CMD", "CQ", "GRID", "GRID?", "HEARING",
-             "HEARING?", "HEARTBEAT", "INFO", "INFO?", "MSG", "SNR",
-             "SNR?", "STATUS", "STATUS?", "QUERY MSGS", "APRS::SMSGTE",
-             "NACK", "QUERY MSG", "QUERY"].member?(type) and type[0]!='@')
-          type="TEXT"
-        end
-        ftx=Hash.new
-        if((stuff[-1]=="MSG") and (stuff[-2]=="INFO"))
-          crap=stuff.pop
-          crap=stuff.pop
-          message=(stuff.reverse.join(' ')).split(';')
-          ftx['grid']=message[0].strip
-        end
-        if(stuff[-1]=="INFO")
-          crap=stuff.pop
-          message=(stuff.reverse.join(' ')).split(';')
-          if(message.length>0)
+        if(type)
+          if(!["ACK", "AGN?", "CMD", "CQ", "GRID", "GRID?", "HEARING",
+               "HEARING?", "HEARTBEAT", "INFO", "INFO?", "MSG", "SNR",
+               "SNR?", "STATUS", "STATUS?", "QUERY MSGS", "APRS::SMSGTE",
+               "NACK", "QUERY MSG", "QUERY"].member?(type) and type[0]!='@')
+            type="TEXT"
+          end
+          ftx=Hash.new
+          if((stuff[-1]=="MSG") and (stuff[-2]=="INFO"))
+            crap=stuff.pop
+            crap=stuff.pop
+            message=(stuff.reverse.join(' ')).split(';')
             ftx['grid']=message[0].strip
           end
-        end
-        if(message.class==Array)
-          if(message.length>0)
-            p message if @debug
-            message[1..-1].each do |n| 
-              item=n.split('=')
-              ftx[item[0].strip.upcase]=item[1].strip.upcase
-            end
-            if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
-              type="FTX"
+          if(stuff[-1]=="INFO")
+            crap=stuff.pop
+            message=(stuff.reverse.join(' ')).split(';')
+            if(message.length>0)
+              ftx['grid']=message[0].strip
             end
           end
-          return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
+          if(message.class==Array)
+            if(message.length>0)
+              p message if @debug
+              message[1..-1].each do |n| 
+                item=n.split('=')
+                ftx[item[0].strip.upcase]=item[1].strip.upcase
+              end
+              if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
+                type="FTX"
+              end
+            end
+            return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
+          end
         end
       end
     end
