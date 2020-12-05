@@ -19,7 +19,7 @@ js8_port=2442
 grid=""
 my_call=""
 avg_pir_interval=300
-avg_info_wait=300
+avg_info_interval=300
 max_age=3690
 
 # Do some initializing.
@@ -27,8 +27,8 @@ info=False
 as_stations={}
 heard_stations={}
 my_pirs={}
-last_info=time.time()
-last_sent_pir=last_info
+last_sent_info=time.time()
+last_sent_pir=last_sent_info
 ack=False
 dial_freq=-1
 offset_freq=-1
@@ -41,15 +41,15 @@ as_stations['N0WAY']=[-7,time.time()-random.randint(0,3600)]
 as_stations['N0BDY']=[-5,time.time()-random.randint(0,3600)]
 as_stations['N0SHT']=[-17,time.time()-random.randint(0,3600)]
 #info={"GRID":"10","PIR1":"R","PIR2":"R"}
-heard_stations['AA0AA']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DN11;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
-heard_stations['AA0BB']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DM12;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
-heard_stations['AA0CC']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DL13;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
-heard_stations['AA0DD']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DK14;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
-heard_stations['AA0EE']=[random.randint(-18,10),time.time()-random.randint(0,3600),"DJ15;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0AA']=[random.randint(-18,-10),time.time()-random.randint(0,3600),"DN11;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0BB']=[random.randint(-18,-10),time.time()-random.randint(0,3600),"DM12;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0CC']=[random.randint(-18,-10),time.time()-random.randint(0,3600),"DL13;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0DD']=[random.randint(-18,-10),time.time()-random.randint(0,3600),"DK14;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
+heard_stations['AA0EE']=[random.randint(-18,-10),time.time()-random.randint(0,3600),"DJ15;PIR1=" + ['R','Y','G','U'][random.randint(0,3)]]
 
 # Randomize the intervals a bit so stations don't step on each other.
 pir_interval=random.randint(int(avg_pir_interval*0.75),int(avg_pir_interval*1.25))
-info_wait=random.randint(int(avg_info_wait*0.75),int(avg_info_wait*1.25))
+info_wait=random.randint(int(avg_info_interval*0.75),int(avg_info_interval*1.25))
 
 # Open a socket to JS8Call.
 s=socket.socket()
@@ -128,7 +128,7 @@ def rx_thread(name):
     global info
     global s
     global as_stations
-    global last_info
+    global last_sent_info
     global last_sent_pir
     global ack
     global grid
@@ -210,7 +210,7 @@ def rx_thread(name):
                         # Wait half the specified time before we bug
                         # the AS if this is the first AS we've seen.
                         if(len(as_stations)==0):
-                            last_info=time.time()-(avg_info_wait/2)+random.randint(int(avg_info_wait*0.875),int(avg_info_wait*1.125))
+                            last_sent_info=time.time()-(avg_info_interval/2)+random.randint(int(avg_info_interval*0.875),int(avg_info_interval*1.125))
                         as_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
                     # If there's (maybe) JSON data in the message, try
                     # to extract it. Failed extractions are caught by
@@ -219,10 +219,10 @@ def rx_thread(name):
                     if(("/A" in from_call) and ("{" in value) and ("}" in value)):
                         print("Got info")
                         now=time.time()
-                        last_info=now
+                        last_sent_info=now
                         last_sent_pir=now
                         if(len(as_stations)==0):
-                            last_info=time.time()+(avg_info_wait/2)
+                            last_sent_info=time.time()+(avg_info_interval/2)
                         as_stations[(from_call.split('/')[0]).strip()]=[snr,time.time()]
                         # Parse the received JSON.
                         info=json.loads(value[value.find('{'):value.find('}')+1])
@@ -339,8 +339,8 @@ def selected(a,b):
         return("")
 
 def pir_form_html():
+    string=""
     if(info):
-        string=""
         for key in list(info.keys()):
             if(key=="GRID"):
                 string=string+"<tr><td>Grid</td><td>"+grid+"</td></tr>"
@@ -371,6 +371,30 @@ def pir_form_html():
                         string=string+"<tr><td>"+key+"</td><td><input type=\"text\" name=\""+key+"\" /></td></tr>"
     return(string)
 
+def low_warn(f):
+    if(f<1800):
+        return(" (MOVE UP!!!)")
+    else:
+        return("")
+
+def transmit_checklist():
+    string=""
+    string=string+"<table border=1 style=\"display: inline-block;\">"
+    string=string+"<tr><th>Requirement</th><th>State</th></tr>"
+    if(info):
+        string=string+"<tr><td>Info Format</td><td><img src=\"/static/images/green_led_small.png\" alt=\"Green\" /></td></tr>"
+    else:
+        string=string+"<tr><td>Info Format</td><td><img src=\"/static/images/red_led_small.png\" alt=\"Red\" /></td></tr>"
+    if(best_station(as_stations,max_age)):
+        string=string+"<tr><td>Aggregation Station</td><td><img src=\"/static/images/green_led_small.png\" alt=\"Green\" /></td></tr>"
+    else:
+        string=string+"<tr><td>Aggregation Station</td><td><img src=\"/static/images/red_led_small.png\" alt=\"Red\" /></td></tr>"
+    if(len(my_pirs)>0):
+        string=string+"<tr><td>PIRs Set</td><td><img src=\"/static/images/green_led_small.png\" alt=\"Green\" /></td></tr>"
+    else:
+        string=string+"<tr><td>PIRs Set</td><td><img src=\"/static/images/red_led_small.png\" alt=\"Red\" /></td></tr>"
+    return(string)
+
 class jsmapper_generator(object):
     @cherrypy.expose
     def index(self, **stuff):
@@ -388,23 +412,23 @@ class jsmapper_generator(object):
               <img src="/static/images/amrron_small.png" alt="AmRRON" />
             </center>
             <br />
-            <br />
             <p>My Info</p>
-            <table border=1>
+            <table border=1 style="display: inline-block;">
               <tr><td>Call</td><td>""" + my_call + """</td></tr>
               <tr><td>Grid</td><td>""" + grid + """</td></tr>
               <tr><td>Modulation Speed</td><td>""" + speed_word(mode_speed) + """</td></tr>
               <tr><td>Dial Freq</td><td>""" + value_or_unk(dial_freq) + """ khz</td></tr>
-              <tr><td>Offset</td><td>""" + value_or_unk(offset_freq) + """ hz</td></tr>
+              <tr><td>Offset</td><td>""" + value_or_unk(offset_freq) + """ hz""" + low_warn(offset_freq) + """</td></tr>
               <tr><td>Transmit Freq</td><td>""" + value_or_unk(dial_freq+(offset_freq/1000)) + """ khz</td></tr>
               <tr><td></td><td></td></tr>
               <tr><td>Reporting Format</td><td>""" + json.dumps(info) + """</td></tr>
               <tr><td></td><td></td></tr>
               """ + info_html() + """
               <tr><td></td><td></td></tr>
-              <tr><td>Sending in</td><td>""" + str(not_negative(pir_interval-int(time.time()-last_sent_pir))) + """ seconds</td></tr>
+              <tr><td>Sending PIR in</td><td>""" + str(not_negative(pir_interval-int(time.time()-last_sent_pir))) + """ seconds</td></tr>
+              <tr><td>Requesting INFO in</td><td>""" + str(not_negative(info_wait-int(time.time()-last_sent_info))) + """ seconds</td></tr>
             </table>
-            <br />
+           """ + transmit_checklist() + """
             <br />
             <table>
               <tr>
@@ -420,20 +444,22 @@ class jsmapper_generator(object):
                     <button style="background-color: #daad86;" type="submit">Send PIR Now</button>
                   </form>
                 </td>
+                <td>
+                  <form method="get" action="askinfo">
+                    <input type="hidden" name="send" value="now">
+                    <button style="background-color: #daad86;" type="submit">Request INFO Now</button>
+                  </form>
+                </td>
               </tr>
             </table>
-            <br />
             <br />
             <p>Aggregation Stations Heard</p>
            """ + as_stations_html() + """
             <br />
-            <br />
             <p>Reporting Stations Heard</p>
            """ + heard_stations_html() + """
             <br />
-            <br />
            """ + time.asctime(time.gmtime(time.time())) + """
-            <br />
             <br />
           </body>
         </html>"""
@@ -443,6 +469,20 @@ class jsmapper_generator(object):
         global last_sent_pir
         global avg_pir_interval
         last_sent_pir=time.time()-(2*avg_pir_interval)
+        return """<html>
+          <head>
+            <link href="/static/css/style.css" rel="stylesheet">
+            <meta http-equiv = "refresh" content = "1; url = /"/>
+          </head>
+          <body>
+          </body>
+        </html>"""
+
+    @cherrypy.expose
+    def askinfo(self, send=False):
+        global last_sent_info
+        global avg_info_interval
+        last_sent_info=time.time()-(2*avg_info_interval)
         return """<html>
           <head>
             <link href="/static/css/style.css" rel="stylesheet">
@@ -516,7 +556,7 @@ if __name__ == '__main__':
             print("I have the info I need: " + json.dumps(info))
         else:
             if(len(as_stations)>0):
-                print("I do not have the info I need to generate a PIR. If I don't receive it in " + str(info_wait-int(now-last_info)) + " seconds, I'm going to ask for it.")
+                print("I do not have the info I need to generate a PIR. If I don't receive it in " + str(info_wait-int(now-last_sent_info)) + " seconds, I'm going to ask for it.")
             else:
                 print("I do not have the info I need to generate a PIR, and I have nobody to ask for it.")
         if(best):
@@ -535,11 +575,11 @@ if __name__ == '__main__':
         # If I have an Aggregation Station to talk to, and I've waited
         # more than my timeout for him to broadcast his INFO, ask for
         # it.
-        if(not(info) and (now>=last_info+info_wait) and (best)):
+        if(not(info) and (now>=last_sent_info+info_wait) and (best)):
             # Update the timeout.
-            last_info=now
+            last_sent_info=now
             # Re-randomize the wait (a little bit).
-            info_wait=random.randint(int(avg_info_wait*0.75),int(avg_info_wait*1.25))
+            info_wait=random.randint(int(avg_info_interval*0.75),int(avg_info_interval*1.25))
             # Send the INFO request to JS8Call.
             print()
             print("Requesting INFO from " + best + "...")

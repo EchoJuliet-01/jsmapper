@@ -26,3 +26,9 @@ th {
  text-align: left;
  font: italic 100% courier new;
 }
+.floatedTable {
+    float:left;
+}
+.inlineTable {
+    display: inline-block;
+}
