@@ -184,7 +184,11 @@ end
 def extract(message)
   # Split the message up into it's constituent parts (sure would be
   # cleaner to log in JSON, hint hint...).
-  thing=message.split(" ",6)
+  begin
+    thing=message.split(" ",6)
+  rescue
+    return()
+  end
 
   # Extract some useful stuff.
   date=thing[0]
@@ -207,7 +211,7 @@ def extract(message)
   # least pulling out the data your own station transmitted, as that's
   # the only place to find it.
   if(payload)
-    if((!payload.include?("…")) and 
+    if((!payload.include?("…")) and
        (freq.to_i>0) and (date.include?('-')) and (time.include?(':')) and 
        ((snr[0]=='+')||snr[0]=='-') and (freq>=@dial_freq) and 
        (freq<=@dial_freq+@bandwidth))
@@ -221,7 +225,7 @@ def extract(message)
       flag=true
       # Don't choke on bogus UTF-8, just skip it.
       begin
-        stuff=payload.gsub('♢','').strip.split.reverse
+        stuff=payload.gsub('♢','').gsub(' ?','').strip.split.reverse
       rescue ArgumentError
         flag=false
       end
@@ -315,16 +319,20 @@ def extract(message)
         if(stuff[-1]=="INFO")
           crap=stuff.pop
           message=(stuff.reverse.join(' ')).split(';')
-          ftx['grid']=message[0].strip
+          if(message.length>0)
+            ftx['grid']=message[0].strip
+          end
         end
         if(message.class==Array)
-          p message if @debug
-          message[1..-1].each do |n| 
-            item=n.split('=')
-            ftx[item[0].strip.upcase]=item[1].strip.upcase
-          end
-          if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
-            type="FTX"
+          if(message.length>0)
+            p message if @debug
+            message[1..-1].each do |n| 
+              item=n.split('=')
+              ftx[item[0].strip.upcase]=item[1].strip.upcase
+            end
+            if(ftx.key?('grid') and (ftx.key?('PIR1') or ftx.key?('PRI1')))
+              type="FTX"
+            end
           end
           return(Message.new(timestamp_t,freq,from,to,from_relay,to_relay,type,stuff.reverse,ftx))
         end
